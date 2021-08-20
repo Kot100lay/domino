@@ -1,0 +1,144 @@
+from discord.ext.commands.bot import Bot
+from discord.ext import commands
+import asyncio
+
+import random
+import RPi.GPIO as GPIO
+led = 24
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(led, GPIO.OUT)
+GPIO.output(led, 0)
+
+morse_dict = {"A": ".-",
+              "B": "-...",
+              "C": "-.-.",
+              "D": "-..",
+              "E": ".",
+              "F": "..-.",
+              "G": "--.",
+              "H": "....",
+              "I": "..",
+              "J": ".---",
+              "K": "-.-",
+              "L": ".-..",
+              "M": "--",
+              "N": "-.",
+              "O": "---",
+              "P": ".--.",
+              "Q": "--.-",
+              "R": ".-.",
+              "S": "...",
+              "T": "-",
+              "U": "..-",
+              "V": "...-",
+              "W": ".--",
+              "X": "-..-",
+              "Y": "-.--",
+              "Z": "--..",
+              "1": ".----",
+              "2": "..---",
+              "3": "...--",
+              "4": "....-",
+              "5": ".....",
+              "6": "-....",
+              "7": "--...",
+              "8": "---..",
+              "9": "----.",
+              "0": "-----",
+              ",": "--..--",
+              ".": ".-.-.-",
+              "?": "..--..",
+              '"': ".-..-.",
+              ":": "---..",
+              "'": ".----.",
+              "-": "-....-",
+              "/": "-..-.",
+              "(": "-.--.",
+              ")": "-.--.-"}
+
+
+def encode(source: str) -> str:
+    if not source: return None
+
+    encoded_output = ''
+    for char in source:
+        if char.upper() in morse_dict.keys():
+            encoded_output += morse_dict[char.upper()]
+        elif char == " ":
+            encoded_output += " "
+    
+    return encoded_output
+
+
+async def flash_LED(duration: float) -> None:
+    GPIO.output(led, 1)
+    await asyncio.sleep(duration)
+    GPIO.output(led, 0)
+
+
+async def play(source: str) -> None:
+    if not source: return None
+
+    TIME_UNIT = 0.2  # seconds
+    for character in source:
+        if character == "-":  # DASH
+            await flash_LED(TIME_UNIT * 3)
+        elif character == ".":  # DOT
+            await flash_LED(TIME_UNIT)
+        elif character == " ":  # SPACE
+            await asyncio.sleep(TIME_UNIT * 2)
+        await asyncio.sleep(TIME_UNIT)
+
+
+class Morse(commands.Cog):
+    def __init__(self, bot) -> None:
+        self.bot = bot
+        self.busy = False
+        self.logall = False
+
+    @commands.command()
+    async def send(self, ctx, *args):
+        if not args:
+            if ctx.author.id != 552216324953079808:
+                return None
+            else:
+                args = ''.join(random.choice(morse_dict.keys()) for _ in range(10))
+
+        if not self.busy:
+            self.busy = True
+            
+            args_but_string = ' '.join(args)
+            joined = ' '.join(args_but_string)
+            source_morse = encode(joined)
+
+            await ctx.send("Ok, czej")
+            await play(source=source_morse)
+            self.busy = False
+        
+        else:
+            await ctx.send("No czekaj")
+    
+    @commands.command()
+    @commands.is_owner()
+    async def swap_mode(self, ctx):
+        self.logall = not self.logall
+        await ctx.send(f"self.logall = {self.logall}")
+
+    @commands.Cog.listener("on_message")
+    async def on_message(self, message):
+        if not self.logall:
+            return None
+        
+        if not self.busy and not message.startswith(self.bot.PREFIX):
+            self.busy = True
+
+            joined = ' '.join(message)
+            source_morse = encode(joined)
+            await play(source=source_morse)
+            self.busy = False
+
+        
+def setup(bot):
+    bot.add_cog(Morse(bot))
