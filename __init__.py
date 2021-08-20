@@ -47,7 +47,7 @@ class Bot(commands.Bot):
     def __init__(self):
         self.PREFIX = PREFIX
         self.ready = False
-        self.TOKEN = "NzE3ODM5NzYwMjAyMjY4Nzk3.XtgLFw.AmcYbdbNOVdpnRrT_A00XHr1Y-U"
+        self.TOKEN = responses._token_
         # TODO debugging channel and a method (somewhere) for both logging and printing out messages
 
         super().__init__(command_prefix=commands.when_mentioned_or(PREFIX), owner_ids=OWNER_IDS, activity=discord.Game("Poker"))
